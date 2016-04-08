@@ -1,0 +1,139 @@
+<!doctype html><head><title>Bouncing Balls Demo II</title></head><body>
+
+<canvas id="canvas"></canvas>
+
+<style>
+#canvas {
+    display: block;
+    /*border-bottom: 1px solid black;*/
+    margin: 50px auto;
+}
+</style>
+
+<script src=utils.js></script>
+
+<script>
+"use strict";
+
+var FPS = 30.0;
+var YMAX = 100;
+var GROUND_VEL = 5;
+var GROUND_STEP = 5;
+var GROUND_DEPTH = 10;
+var canvas = document.getElementById("canvas"), ctx = canvas.getContext("2d");
+var W = 90, H = 100;
+canvas.height = H; canvas.width = W;
+
+var balls = [];
+var ground_off = 0;
+var timer = null;
+var prev_time = null;
+
+function clear_scene() {
+    ctx.clearRect(0, 0, W, H);
+}
+
+function init_ball(el, left, top, width, height, color) {
+    el.y = top;
+    el.x = left;
+    el.w = width;
+    el.h = height;
+    el.ymax = YMAX;
+    el.y0 = 0;
+    el.v = 0.00;
+    el.k1 = 0.00;
+    el.d1 = 0.00;
+    el.k2 = 0.00;
+    el.d2 = 0.00;
+    el.color = color;
+}
+
+function on_fps_change() {
+    if (timer !== null)
+        clearInterval(timer);
+    timer = setInterval(on_timer, 1000.00/FPS);
+}
+
+function draw_ball(ball, prev) {
+    if (ball.y < ball.y0) {
+        var ratio = 1 - (ball.y0 - ball.y) / ball.ymax;
+        ball.eh = ball.h * ratio;
+        ball.ey = H - ball.y0 - ball.eh;
+    } else {
+        ball.eh = ball.h;
+        ball.ey = H - ball.y - ball.eh;
+    }
+    draw_ellipse(ctx, ball.x, ball.ey, ball.w, ball.eh, ball.color);
+    draw_ellipse(ctx, ball.x + ball.w / 3, ball.ey + ball.eh / 3, ball.w/3, ball.eh/3, 55);
+    if (prev) {
+        draw_line(ctx,
+            prev.x + prev.w / 2, prev.ey + prev.eh / 2,
+            ball.x + ball.w / 2, ball.ey + ball.eh / 2,
+            10, "yellow");
+    }
+}
+
+function draw_ball_text(ball) {
+    ctx.font = "bold 10px Arial";
+    ctx.fillStyle = 'gray';
+    ctx.fillText("15", ball.x + ball.w / 2 - 8,  ball.ey + ball.eh / 2 + 4);
+}
+
+function move_one_step(el, dt) {
+    var a;
+    if (el.y >= el.y0)
+        a = (el.y0 - el.y) * el.k1 - el.v*el.d1;
+    else
+        a = (el.y0 - el.y) * el.k2 - el.v*el.d2;
+    el.y += el.v*dt + a*dt*dt*2/2;
+    el.v += a*dt;
+    //console.log(dt);
+    ground_off += GROUND_VEL * dt
+    if (ground_off >= GROUND_STEP)
+        ground_off -= GROUND_STEP;
+}
+
+function draw_ground() {
+    draw_line(ctx, 0, H - GROUND_DEPTH, W, H - GROUND_DEPTH, 1, 'black');
+    for (var x = 0; x < W; x += GROUND_STEP) {
+        draw_line(ctx,
+            x + GROUND_STEP - ground_off, H - GROUND_DEPTH,
+            x - ground_off, H,
+            1, 'black');
+    }
+}
+
+function on_timer() {
+    var now = get_time();
+    if (prev_time === null) {
+        prev_time = now;
+        return;
+    }
+    clear_scene();
+    //process_mouse();
+    for (var i = 0; i < balls.length; i++) {
+        move_one_step(balls[i], (now - prev_time) / 1000.0);
+        draw_ball(balls[i], i > 0? balls[i-1] : null);
+    }
+    for (var i = 0; i < balls.length; i++) {
+        draw_ball_text(balls[i]);
+    }
+    draw_ground();
+    prev_time = now;
+}
+
+document.addEventListener("DOMContentLoaded", function(event) {
+    for (var i = 0; i < 4; i++) {
+        var new_ball = {};
+        init_ball(new_ball, 0 + i * 20, 20 + 20*Math.random(), 30, 30, 0+i*80);
+        new_ball.k1 = 10 + 30 * Math.random();
+        new_ball.d1 = 0.1;//0.3;
+        new_ball.k2 = 180 + 50 * Math.random();
+        new_ball.d2 = 0.1; //5;
+        new_ball.y0 = GROUND_DEPTH;
+        balls.push(new_ball);
+    }
+    on_fps_change();
+});
+
+</script>
